@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>HumanSight - Live Mode</title>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        #video-container { position: relative; }
+        #canvas { position: absolute; top: 0; left: 0; }
+        #controls { margin: 10px; }
+        #recordBtn { background-color: #ff5252; }
+        #clipBtn { background-color: #4caf50; }
+    </style>
+</head>
+<body>
+    <h1>HumanSight - Live Mode</h1>
+    <div id="video-container">
+        <video id="video" autoplay muted></video>
+        <canvas id="canvas"></canvas>
+    </div>
+    <div id="controls">
+        <button id="recordBtn">Start Recording</button>
+        <button id="clipBtn" disabled>Clip Last 60s</button>
+        <div id="status">Status: Ready</div>
+    </div>
+    <script src="renderer.js"></script>
+</body>
+</html>
