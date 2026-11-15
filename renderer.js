@@ -9,41 +9,16 @@ let mediaStream;
 let isRecording = false;
 let recordedChunks = [];
 let last60sBuffer = [];
-let faceapi;
-let faceMatcher;
 
-// Initialize face-api.js with models
+// Load face-api.js models (pre-trained)
 async function loadModels() {
     await faceapi.nets.tinyFaceDetector.loadFromUri('models');
     await faceapi.nets.faceLandmark68Net.loadFromUri('models');
     await faceapi.nets.faceRecognitionNet.loadFromUri('models');
-
-    // Load training data
-    const labeledFaceDescriptors = await loadLabeledImages();
-    faceMatcher = new faceapi.FaceMatcher(labeledFaceDescriptors, 0.6);
+    statusDiv.textContent = "Status: Models loaded";
 }
 
-async function loadLabeledImages() {
-    const labels = ['Person', 'Not-Person', 'Person-Face'];
-    return Promise.all(
-        labels.map(async label => {
-            const descriptions = [];
-            for (let i = 1; i <= 10; i++) { // Assuming 10 images per label
-                try {
-                    const img = await faceapi.fetchImage(`Files/Training-Data/${label}/image_${i}.jpg`);
-                    const detections = await faceapi.detectSingleFace(img, new faceapi.TinyFaceDetectorOptions())
-                        .withFaceLandmarks()
-                        .withFaceDescriptor();
-                    descriptions.push(detections.descriptor);
-                } catch (e) {
-                    console.error(`Error loading ${label}/image_${i}.jpg`, e);
-                }
-            }
-            return new faceapi.LabeledFaceDescriptors(label, descriptions);
-        })
-    );
-}
-
+// Start camera and detect faces
 async function setupCamera() {
     try {
         mediaStream = await navigator.mediaDevices.getUserMedia({ video: true });
@@ -57,6 +32,7 @@ async function setupCamera() {
     }
 }
 
+// Detect faces in real-time (no live learning)
 async function detectFaces() {
     if (!video.paused && !video.ended) {
         const detection = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
@@ -64,15 +40,14 @@ async function detectFaces() {
             .withFaceDescriptor();
 
         if (detection) {
-            const bestMatch = faceMatcher.findBestMatch(detection.descriptor);
-            drawDetection(detection, bestMatch.label);
+            drawDetection(detection);
         } else {
             drawDetection(null);
         }
 
         // Store last frame for 60s buffer
         last60sBuffer.push(canvas.toDataURL('image/jpeg'));
-        if (last60sBuffer.length > 60 * 30) { // Assuming ~30fps
+        if (last60sBuffer.length > 60 * 30) { // ~30fps
             last60sBuffer.shift();
         }
 
@@ -80,24 +55,20 @@ async function detectFaces() {
     }
 }
 
-function drawDetection(detection, label) {
+// Draw hitboxes
+function drawDetection(detection) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
     if (detection) {
         const { x, y, width, height } = detection.box;
-        ctx.strokeStyle = label === 'Person-Face' ? '#00ff00' : '#ff0000';
+        ctx.strokeStyle = '#00ff00';
         ctx.lineWidth = 2;
         ctx.strokeRect(x, y, width, height);
-
-        if (label) {
-            ctx.fillStyle = ctx.strokeStyle;
-            ctx.font = '16px Arial';
-            ctx.fillText(label, x, y > 10 ? y - 5 : 10);
-        }
     }
 }
 
+// Recording controls
 recordBtn.addEventListener('click', () => {
     if (!isRecording) {
         isRecording = true;
@@ -109,7 +80,6 @@ recordBtn.addEventListener('click', () => {
         recordBtn.textContent = "Start Recording";
         statusDiv.textContent = "Status: Recording saved";
 
-        // Create download link
         const blob = new Blob(recordedChunks, { type: 'video/webm' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -119,9 +89,10 @@ recordBtn.addEventListener('click', () => {
     }
 });
 
+// Clip last 60s
 clipBtn.addEventListener('click', () => {
     if (last60sBuffer.length > 0) {
-        const clip = last60sBuffer.slice(-60 * 30); // Last 60s worth of frames
+        const clip = last60sBuffer.slice(-60 * 30);
         const canvasClip = document.createElement('canvas');
         canvasClip.width = canvas.width;
         canvasClip.height = canvas.height;
@@ -138,7 +109,6 @@ clipBtn.addEventListener('click', () => {
                 frames.push(frameData);
 
                 if (frames.length === clip.length) {
-                    // Create download link for the clip
                     const blob = new Blob([frames.map(f => {
                         const byteString = atob(f.split(',')[1]);
                         const mimeString = f.split(',')[0].split(':')[1].split(';')[0];
