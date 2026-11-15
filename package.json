@@ -1,0 +1,22 @@
+{
+  "name": "humansight",
+  "version": "1.0.0",
+  "description": "Human detection system",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder"
+  },
+  "dependencies": {
+    "electron": "^latest",
+    "opencv.js": "^latest",
+    "face-api.js": "^latest"
+  },
+  "build": {
+    "appId": "com.example.humansight",
+    "win": {
+      "target": "nsis"
+    }
+  }
+}
